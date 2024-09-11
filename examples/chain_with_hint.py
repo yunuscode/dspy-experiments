@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import dspy
 from dspy.teleprompt import BootstrapFewShot
+from dspy.primitives import Example
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,20 +23,25 @@ class SimpleClassifier(dspy.Module):
         return self.classify(text=text, hint=hint)
 
 # Define a simple accuracy metric
-def accuracy_metric(example, pred):
-    print(f"Example: {example}, Prediction: {pred}")
-    return example['label'] == pred.label
+def accuracy_metric(example, pred, trace=None):
+    return example.label == pred.label
 
 # Function to classify text
 def classify_text(text, labels, dataset, hint):
-    # Create a basic compiler
-    compiler = BootstrapFewShot()
+    # Create a basic compiler with the accuracy metric
+    compiler = BootstrapFewShot(metric=accuracy_metric)
 
     # Create an instance of SimpleClassifier with the given labels
     classifier_instance = SimpleClassifier(labels)
 
+    # Convert dataset to proper Example objects with inputs specified
+    proper_dataset = [
+        Example(text=item['text'], label=item['label'], hint=hint).with_inputs('text', 'hint')
+        for item in dataset
+    ]
+
     # Compile the model
-    compiled_model = compiler.compile(classifier_instance, trainset=dataset)
+    compiled_model = compiler.compile(classifier_instance, trainset=proper_dataset)
 
     # Classify the input text
     classification = compiled_model(text=text, hint=hint)
@@ -57,7 +63,7 @@ if __name__ == "__main__":
     ]
 
     # Test topic classifier
-    sample_text = "Ronaldo gifted a new Iphone for Trumps birthday."
-    hint = "Consider the mix of technology and politics in this statement. Only output the label."
+    sample_text = "A new Iphone was unveiled yesterday."
+    hint = "Only output the label. If there is no clear label, output 'OTHER'. Don't output anything else."
     topic = classify_text(sample_text, topic_labels, topic_dataset, hint)
     print(f"Topic Classification: {topic}")
