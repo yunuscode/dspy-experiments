@@ -17,10 +17,11 @@ class SimpleClassifier(dspy.Module):
     def __init__(self, labels):
         super().__init__()
         self.labels = labels
-        self.classify = dspy.ChainOfThoughtWithHint("text, hint -> label")
+        self.classify = dspy.Predict("text, hint -> label")
 
     def forward(self, text, hint):
-        return self.classify(text=text, hint=hint)
+        result = self.classify(text=text, hint=hint)
+        return dspy.Prediction(label=result.label)
 
 # Define a simple accuracy metric
 def accuracy_metric(example, pred, trace=None):
@@ -63,7 +64,29 @@ if __name__ == "__main__":
     ]
 
     # Test topic classifier
-    sample_text = "A new Iphone was unveiled yesterday."
-    hint = "Only output the label. If there is no clear label, output 'OTHER'. Don't output anything else."
+    sample_text = "A new iPhone was unveiled yesterday."
+    hint = f"Classify the text into one of these categories: {', '.join(topic_labels)}. Only output the exact label, nothing else."
     topic = classify_text(sample_text, topic_labels, topic_dataset, hint)
     print(f"Topic Classification: {topic}")
+
+    # Validation
+    if topic not in topic_labels:
+        print(f"Error: Unexpected output '{topic}'. Expected one of: {', '.join(topic_labels)}")
+    else:
+        print("Output validation passed.")
+
+    # Additional test cases
+    test_cases = [
+        "The stock market crashed today, causing panic among investors.",
+        "The band released their new album today.",
+        "The president announced a new policy on climate change.",
+    ]
+
+    for test_text in test_cases:
+        result = classify_text(test_text, topic_labels, topic_dataset, hint)
+        print(f"\nInput: {test_text}")
+        print(f"Classification: {result}")
+        if result not in topic_labels:
+            print(f"Error: Unexpected output '{result}'. Expected one of: {', '.join(topic_labels)}")
+        else:
+            print("Output validation passed.")
