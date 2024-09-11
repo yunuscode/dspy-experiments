@@ -16,10 +16,10 @@ class SimpleClassifier(dspy.Module):
     def __init__(self, labels):
         super().__init__()
         self.labels = labels
-        self.classify = dspy.ChainOfThought("text -> label")
+        self.classify = dspy.ChainOfThoughtWithHint("text, hint -> label")
 
-    def forward(self, text):
-        return self.classify(text=text)
+    def forward(self, text, hint):
+        return self.classify(text=text, hint=hint)
 
 # Define a simple accuracy metric
 def accuracy_metric(example, pred):
@@ -27,7 +27,7 @@ def accuracy_metric(example, pred):
     return example['label'] == pred.label
 
 # Function to classify text
-def classify_text(text, labels, dataset):
+def classify_text(text, labels, dataset, hint):
     # Create a basic compiler
     compiler = BootstrapFewShot()
 
@@ -38,7 +38,7 @@ def classify_text(text, labels, dataset):
     compiled_model = compiler.compile(classifier_instance, trainset=dataset)
 
     # Classify the input text
-    classification = compiled_model(text=text)
+    classification = compiled_model(text=text, hint=hint)
     return classification.label
 
 # Example usage
@@ -58,5 +58,6 @@ if __name__ == "__main__":
 
     # Test topic classifier
     sample_text = "Ronaldo gifted a new Iphone for Trumps birthday."
-    topic = classify_text(sample_text, topic_labels, topic_dataset)
+    hint = "Consider the mix of technology and politics in this statement. Only output the label."
+    topic = classify_text(sample_text, topic_labels, topic_dataset, hint)
     print(f"Topic Classification: {topic}")
